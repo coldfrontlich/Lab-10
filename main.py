@@ -1,9 +1,7 @@
-import json, os
-
+import json, os, requests
 import pyttsx3, pyaudio, vosk
 
 tts = pyttsx3.init('sapi5')
-
 voices = tts.getProperty('voices')
 tts.setProperty('voices', 'en')
 
@@ -12,7 +10,7 @@ for voice in voices:
     if voice.name == 'Microsoft Zira Desktop - English (United States)':
         tts.setProperty('voice', voice.id)
 
-model = vosk.Model('model_small')
+model = vosk.Model('vosk-model-small-en-us-0.15')
 record = vosk.KaldiRecognizer(model, 16000)
 pa = pyaudio.PyAudio()
 stream = pa.open(format=pyaudio.paInt16,
@@ -36,13 +34,45 @@ def speak(say):
     tts.say(say)
     tts.runAndWait()
 
+def save(word):  
+    response = requests.get(f'https://api.dictionaryapi.dev/api/v2/entries/en/{word}')
+    data = response.json()
+    with open("data.txt", "w") as f:
+        json.dump(data, f)
+    print("Saved to a file data.txt")
 
-speak('starting')
-print('start...')
+def meaning(word):
+    response = requests.get(f'https://api.dictionaryapi.dev/api/v2/entries/en/{word}')
+    data = response.json()
+    print(data[0]['meanings'][0]['definitions'][0]['definition'])
+    speak(data[0]['meanings'][0]['definitions'][0]['definition'])
+        
+def link(word):
+    response = requests.get(f'https://api.dictionaryapi.dev/api/v2/entries/en/{word}')
+    data = response.json()
+    print(data[0]['sourceUrls'][0])
+
+def example(word):
+    response = requests.get(f'https://api.dictionaryapi.dev/api/v2/entries/en/{word}')
+    data = response.json()
+    print(data[0]['meanings'][0]['definitions'][0]['example'])
+    speak(data[0]['meanings'][0]['definitions'][0]['example'])
+
 for text in listen():
-    if text == 'закрыть':
-        quit()
-    elif text == 'блокнот':
-        os.system('notepad.exe')
+    if 'find' in text:
+        term = text.split("find ")[1]
+        response = requests.get(f'https://api.dictionaryapi.dev/api/v2/entries/en/{term}')
+        data = response.json()
+        print(data['message'])
+    elif text == 'meaning':
+        meaning(term)
+    elif text == 'example':
+        example(term)
+    elif text == 'save':
+        save(term)
+    elif text == 'link':
+        link(term)
+    elif text == 'exit':
+        break
     else:
-        print(text)
+        print('The command is not recognized')
